@@ -1,0 +1,160 @@
+library(readxl)
+library(dplyr) 
+library(lubridate)  
+#####
+#Load metadata
+#####
+setwd("~/OneDrive - The University of Colorado Denver/Dog Project/
+      GRLS Jupyter/Data Analysis/GitHub/GRLS_metagenomics")
+getwd() #this should be the directory that holds the GRLS github project
+
+grls.meta.bcs <-  read.csv("../../Raw Metadata/
+                           millerdata_20210329_correctBCS.csv")
+grls.meta.bcs$SEQUENCE <- as.factor(grls.meta.bcs$SEQUENCE)
+grls.meta.bcs$BCS <- as.factor(grls.meta.bcs$BCS)
+#####
+#Reorganize grls data
+#####
+rm.col <-which(is.element(colnames(grls.meta.bcs),c('VETVISITDATE', "BCS"))==T)
+multi.year <- grls.meta.bcs[,c('SEQUENCE','DOGID', 'VETVISITDATE', "BCS")]
+
+grls.unstacked <- reshape(data=multi.year, 
+                timevar = 'SEQUENCE', idvar = c('DOGID'), 
+                direction = 'wide')
+grls.meta.yr.0<- grls.meta.bcs[which(grls.meta.bcs$SEQUENCE=="0"),]
+unstacked <- merge( grls.unstacked,grls.meta.yr.0[,-2], by.x = 'DOGID', by.y = 'DOGID')
+
+
+lapply(0:(max(as.integer(multi.year$SEQUENCE))-1), function(y){
+  unstacked[,paste0('months_old_',y)] <<- interval(mdy(unstacked$DOB), 
+                                                   mdy(unstacked[,paste0(
+                                                     'VETVISITDATE.',y)])) %/% months(1)
+})
+#####
+#Deleting columns no longer trusted/used from GRLS metadata
+#####
+unique.metadata.unweighted <-  read.csv("../../Generated Metadata/FinalDocs/
+                                        Andrewsfh1920_metadata_unique_unweighted5k.csv")
+full.metadata.unweighted <-  read.csv("../../Generated Metadata/FinalDocs/
+                                      Andrewsfh1920_metadata_full_unweighted5k.csv")
+unique.metadata.weighted <-  read.csv("../../Generated Metadata/FinalDocs/
+                                      Andrewsfh1920_metadata_unique_weighted5k.csv")
+full.metadata.weighted <-  read.csv("../../Generated Metadata/FinalDocs/
+                                    Andrewsfh1920_metadata_full_weighted5k.csv")
+
+
+remove.columns <- function(x, rm.cols = c('GENDER','DOB','GRLSEnrollDate','MonthsOld',
+                                               'RFEMA__spayed_on_date__00','RFEMA__spayed_reason__00',
+                                               'RMALE__neutered_on_date__00','RMALE__neutered_reason__00',
+                                               'WATERSRC','SUPPMNT8','YRDTREAT','HOUSETRT','EATGRASS',
+                                               'CONSUMEF','ACTLEVEL','MEDNAME','ever_hwt',
+                                               'allyr_hwt','ever_flea','allyr_flea','abx',
+                                               'antipoo','p_bowls','bodyfat','twocat','threecat',
+                                               'bcs')){
+  x[,!is.element(colnames(x), rm.cols)]
+}
+
+clean.unique.metadata.unweighted <- remove.columns(unique.metadata.unweighted)
+clean.full.metadata.unweighted <- remove.columns(full.metadata.unweighted)
+clean.unique.metadata.weighted <- remove.columns(unique.metadata.weighted)
+clean.unique.metadata.weighted <- remove.columns(unique.metadata.weighted)
+
+
+#####
+#Deleting rows no longer used from GRLS metadata
+#####
+
+clean.unique.metadata.unweighted1 <- clean.unique.metadata.unweighted[which(clean.unique.metadata.unweighted$sequence != 'NA'),]
+
+clean.full.metadata.unweighted1 <- clean.full.metadata.unweighted[which(clean.full.metadata.unweighted$sequence != 'NA'),]
+
+clean.unique.metadata.weighted1 <- clean.unique.metadata.weighted[which(clean.unique.metadata.weighted$sequence != 'NA'),]
+
+clean.full.metadata.weighted1 <- clean.full.metadata.weighted[which(clean.full.metadata.weighted$sequence != 'NA'),]
+#####
+#Data merge 
+#####
+merge.unique.metadata.unweighted <- merge(clean.unique.metadata.unweighted1, unstacked, by.x = "grls_id", by.y = "DOGID", all.x = T)
+merge.full.metadata.unweighted <- merge(clean.full.metadata.unweighted1, unstacked, by.x = "grls_id", by.y = "DOGID", all.x = T)
+merge.unique.metadata.weighted <- merge(clean.unique.metadata.weighted1, unstacked, by.x = "grls_id", by.y = "DOGID", all.x = T)
+merge.full.metadata.weighted <- merge(clean.full.metadata.weighted1, unstacked, by.x = "grls_id", by.y = "DOGID", all.x = T)
+
+colnames(merge.unique.metadata.unweighted)
+#####
+#Rearrange labels 
+#####
+final.unique.metadata.unweighted <- merge.unique.metadata.unweighted [,c("sampleid","grls_id",
+                                       "Semester","Section","pooled","gDNA_gel","PCR_gel",
+                                       "keepsample","SEX","DOB","ENROLLEDDATE","Study.Status","EnrollmentEndDate",
+                                       "PCT.Canned_food","PCT.Dry_food","PCT.Freeze_dry_food","PCT.Refrigerated.Frozen_raw_food","PCT.Semi.dry.Semimoist_food",
+                                       "TYPEAREA","OZIP",                             
+                                       "swim","Barcode","Rack_Shelf","Box_Row","Box_Column","sequence",
+                                       "VETVISITDATE.0","BCS.0","months_old_0",
+                                       "VETVISITDATE.1","BCS.1","months_old_1",
+                                       "VETVISITDATE.2","BCS.2","months_old_2",                            
+                                       "VETVISITDATE.3","BCS.3","months_old_3",
+                                       "VETVISITDATE.4","BCS.4","months_old_4",
+                                       "VETVISITDATE.5","BCS.5","months_old_5",                            
+                                       "VETVISITDATE.6","BCS.6","months_old_6",                           
+                                       "VETVISITDATE.7","BCS.7","months_old_7",                            
+                                       "VETVISITDATE.8","BCS.8","months_old_8",
+                                       "SharedHousehold")]                  
+
+
+final.full.metadata.unweighted <- merge.full.metadata.unweighted[,c("sampleid","grls_id","public_id",
+                                                                    "Semester","Section","pooled","gDNA_gel","PCR_gel",
+                                                                    "read_depth","keepsample","SEX","DOB","ENROLLEDDATE","Study.Status","EnrollmentEndDate",
+                                                                    "PCT.Canned_food","PCT.Dry_food","PCT.Freeze_dry_food","PCT.Refrigerated.Frozen_raw_food","PCT.Semi.dry.Semimoist_food",
+                                                                    "TYPEAREA","OZIP",                             
+                                                                    "swim","Barcode","Rack_Shelf","Box_Row","Box_Column","sequence",
+                                                                    "VETVISITDATE.0","BCS.0","months_old_0",
+                                                                    "VETVISITDATE.1","BCS.1","months_old_1",
+                                                                    "VETVISITDATE.2","BCS.2","months_old_2",                            
+                                                                    "VETVISITDATE.3","BCS.3","months_old_3",
+                                                                    "VETVISITDATE.4","BCS.4","months_old_4",
+                                                                    "VETVISITDATE.5","BCS.5","months_old_5",                            
+                                                                    "VETVISITDATE.6","BCS.6","months_old_6",                           
+                                                                    "VETVISITDATE.7","BCS.7","months_old_7",                            
+                                                                    "VETVISITDATE.8","BCS.8","months_old_8",
+                                                                    "SharedHousehold")]   
+
+final.unique.metadata.weighted <- merge.unique.metadata.weighted [,c("sampleid","grls_id",
+                                                                         "Semester","Section","pooled","gDNA_gel","PCR_gel",
+                                                                         "keepsample","SEX","DOB","ENROLLEDDATE","Study.Status","EnrollmentEndDate",
+                                                                         "PCT.Canned_food","PCT.Dry_food","PCT.Freeze_dry_food","PCT.Refrigerated.Frozen_raw_food","PCT.Semi.dry.Semimoist_food",
+                                                                         "TYPEAREA","OZIP",                             
+                                                                         "swim","Barcode","Rack_Shelf","Box_Row","Box_Column","sequence",
+                                                                         "VETVISITDATE.0","BCS.0","months_old_0",
+                                                                         "VETVISITDATE.1","BCS.1","months_old_1",
+                                                                         "VETVISITDATE.2","BCS.2","months_old_2",                            
+                                                                         "VETVISITDATE.3","BCS.3","months_old_3",
+                                                                         "VETVISITDATE.4","BCS.4","months_old_4",
+                                                                         "VETVISITDATE.5","BCS.5","months_old_5",                            
+                                                                         "VETVISITDATE.6","BCS.6","months_old_6",                           
+                                                                         "VETVISITDATE.7","BCS.7","months_old_7",                            
+                                                                         "VETVISITDATE.8","BCS.8","months_old_8",
+                                                                         "SharedHousehold")]                  
+
+
+final.full.metadata.weighted <- merge.full.metadata.weighted[,c("sampleid","grls_id","public_id",
+                                                                    "Semester","Section","pooled","gDNA_gel","PCR_gel",
+                                                                    "read_depth","keepsample","SEX","DOB","ENROLLEDDATE","Study.Status","EnrollmentEndDate",
+                                                                    "PCT.Canned_food","PCT.Dry_food","PCT.Freeze_dry_food","PCT.Refrigerated.Frozen_raw_food","PCT.Semi.dry.Semimoist_food",
+                                                                    "TYPEAREA","OZIP",                             
+                                                                    "swim","Barcode","Rack_Shelf","Box_Row","Box_Column","sequence",
+                                                                    "VETVISITDATE.0","BCS.0","months_old_0",
+                                                                    "VETVISITDATE.1","BCS.1","months_old_1",
+                                                                    "VETVISITDATE.2","BCS.2","months_old_2",                            
+                                                                    "VETVISITDATE.3","BCS.3","months_old_3",
+                                                                    "VETVISITDATE.4","BCS.4","months_old_4",
+                                                                    "VETVISITDATE.5","BCS.5","months_old_5",                            
+                                                                    "VETVISITDATE.6","BCS.6","months_old_6",                           
+                                                                    "VETVISITDATE.7","BCS.7","months_old_7",                            
+                                                                    "VETVISITDATE.8","BCS.8","months_old_8",
+                                                                    "SharedHousehold")]  
+#Create metadata csv file
+#####
+write.csv(final.unique.metadata.unweighted, "../../Generated Metadata/FinalDocs/final_metadata_unique_unweighted5k.csv", row.names = F)
+write.csv(final.full.metadata.unweighted, "../../Generated Metadata/FinalDocs/final_metadata_full_unweighted5k.csv", row.names = F)
+write.csv(final.unique.metadata.weighted, "../../Generated Metadata/FinalDocs/final_metadata_unique_weighted5k.csv", row.names = F)
+write.csv(final.full.metadata.weighted, "../../Generated Metadata/FinalDocs/final_metadata_full_weighted5k.csv", row.names = F)
