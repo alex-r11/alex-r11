@@ -1,0 +1,460 @@
+#####
+#Readme
+#####
+#To use this scrip you need to have access to the following OneDrive folder
+#"Data analysis" folder within Alex Romero's UCDenver OneDrive (c. 2020)
+#for access contact email alex.romero@cuanshutz.edu
+
+#####
+#Load Libraries
+#####
+library(readxl)
+library(ggplot2)
+library(reshape2)
+library(MASS)
+#####
+#Load metadata
+#####
+setwd("~/OneDrive - The University of Colorado Denver/Dog Project/GRLS Jupyter/Data Analysis/GitHub/GRLS_metagenomics")
+getwd() #this should be the directory that holds the GRLS github project
+
+#unweighted taxa plots
+#####
+#Run together as chunk to avoid overwriting errors
+######
+#weighted.taxa  <-  read.csv("../../Generated Metadata/FinalDocs/unique_weighted_level_2_taxa.csv")
+
+unweighted.taxa <-  read.csv("../../Generated Metadata/FinalDocs/unique_unweighted_level_2_taxa.csv")
+
+#Select taxa for analysis and hash out unwanted
+#taxa <- weighted.taxa
+taxa <- unweighted.taxa 
+
+relative.abundance <- taxa[,c("index", "Unassigned.__", colnames(taxa[,grep('d__', names(taxa))]))]
+
+#relative.abundance$bacteria_sum = rowSums(relative.abundance[,-1]) #by removing this, we don't need to hard code based on the number of taxa present
+
+lapply(2:(ncol(relative.abundance)), function(y){
+  temp <- data.frame( 'temp' = relative.abundance[,y] / rowSums(relative.abundance[,-1]))
+  colnames(temp) <- paste0('RA__',colnames(relative.abundance[y]))
+  taxa <<- cbind(taxa, temp)
+})
+
+taxa$bf_ratio <- taxa$RA__d__Bacteria.p__Firmicutes/taxa$RA__d__Bacteria.p__Bacteroidota
+#####
+#End chunk
+#####
+
+#####
+#Weight at year 0
+#####
+bcs.years <- 0:5
+lapply(bcs.years, function(a){
+  taxa[,paste0('weight.class.',a)] <<- ifelse(taxa[,paste0('BCS.',a)]==1, 'Malnourished', 
+                            ifelse(taxa[,paste0('BCS.',a)]==2|taxa[,paste0('BCS.',a)]==3, "Underweight", 
+                                   ifelse(taxa[,paste0('BCS.',a)]==4|taxa[,paste0('BCS.',a)]==5, "Ideal weight",
+                                          ifelse(taxa[,paste0('BCS.',a)]==6|taxa[,paste0('BCS.',a)]==7, 'Overweight',
+                                                 ifelse(taxa[,paste0('BCS.',a)]==8|taxa[,paste0('BCS.',a)]==9, "Obese",
+                                                        ifelse(is.na(taxa[,paste0('BCS.',a)]),NA,"Error in logic"))))))
+})
+
+write.csv(taxa, "../../Generated Metadata/FinalDocs/unweighted_taxa_bcs_identified.csv", row.names = F)
+#####
+#subsetting data frame to ideal and overweight
+#####
+sub.weight.0 <- subset(taxa, weight.class.0 %in% c("Ideal weight","Overweight", "Obese", "Underweight"))
+sub.weight.1 <- subset(taxa, weight.class.1 %in% c("Ideal weight","Overweight", "Obese", "Underweight"))
+sub.weight.2 <- subset(taxa, weight.class.2 %in% c("Ideal weight","Overweight", "Obese", "Underweight"))
+sub.weight.3 <- subset(taxa, weight.class.3 %in% c("Ideal weight","Overweight", "Obese", "Underweight"))
+sub.weight.4 <- subset(taxa, weight.class.4 %in% c("Ideal weight","Overweight", "Obese", "Underweight"))
+sub.weight.5 <- subset(taxa, weight.class.5 %in% c("Ideal weight","Overweight", "Obese", "Underweight"))
+
+sub.weight.0$weight.class.0 <- factor(sub.weight.0$weight.class.0, levels = c("Underweight", "Ideal weight", "Overweight", "Obese"))
+sub.weight.1$weight.class.1 <- factor(sub.weight.1$weight.class.1, levels = c("Underweight", "Ideal weight", "Overweight", "Obese"))
+sub.weight.2$weight.class.2 <- factor(sub.weight.2$weight.class.2, levels = c("Underweight", "Ideal weight", "Overweight", "Obese"))
+sub.weight.3$weight.class.3 <- factor(sub.weight.3$weight.class.3, levels = c("Underweight", "Ideal weight", "Overweight", "Obese"))
+sub.weight.4$weight.class.4 <- factor(sub.weight.4$weight.class.4, levels = c("Underweight", "Ideal weight", "Overweight", "Obese"))
+sub.weight.5$weight.class.5 <- factor(sub.weight.5$weight.class.5, levels = c("Ideal weight", "Overweight", "Obese"))
+
+#####
+#ggplot plotting
+#####
+
+graph_data_0 <- sub.weight.0[c(81:108)]
+graph_data_1 <- sub.weight.1[c(81:107, 109)]
+graph_data_2 <- sub.weight.2[c(81:107, 110)]
+graph_data_3 <- sub.weight.3[c(81:107, 111)]
+graph_data_4 <- sub.weight.4[c(81:107, 112)]
+graph_data_5 <- sub.weight.5[c(81:107, 113)]
+
+
+xlabs_0 <- paste(levels(graph_data_0$weight.class.0),"\n(N=",table(graph_data_0$weight.class.0),")",sep="")
+xlabs_1 <- paste(levels(graph_data_1$weight.class.1),"\n(N=",table(graph_data_1$weight.class.1),")",sep="")
+xlabs_2 <- paste(levels(graph_data_2$weight.class.2),"\n(N=",table(graph_data_2$weight.class.2),")",sep="")
+xlabs_3 <- paste(levels(graph_data_3$weight.class.3),"\n(N=",table(graph_data_3$weight.class.3),")",sep="")
+xlabs_4 <- paste(levels(graph_data_4$weight.class.4),"\n(N=",table(graph_data_4$weight.class.4),")",sep="")
+xlabs_5 <- paste(levels(graph_data_5$weight.class.5),"\n(N=",table(graph_data_5$weight.class.5),")",sep="")
+
+graphs <- list(graph_data_0,  graph_data_1, graph_data_2, graph_data_3, graph_data_4, graph_data_5)
+weight <- list(graph_data_0$weight.class.0, graph_data_1$weight.class.1, graph_data_2$weight.class.2, graph_data_3$weight.class.3, graph_data_4$weight.class.4, graph_data_5$weight.class.5)
+bcs <- list(sub.weight.0$BCS.0,sub.weight.1$BCS.1,sub.weight.2$BCS.3,sub.weight.4$BCS.4,sub.weight.5$BCS.5)
+lab <- list(xlabs_0, xlabs_1, xlabs_2, xlabs_3, xlabs_4, xlabs_5)
+bcs.list <- (1:6)
+lapply(bcs.list, function(a){
+  df <- graphs[[a]]
+  x <- weight[[a]]
+  l <- lab[[a]]
+  ggplot(df ,aes(x = x, y = bf_ratio, color = x)) +
+    geom_boxplot() +
+    scale_y_continuous(trans='log10') +
+    theme(axis.title = element_text(size = 35)) +   
+    theme(plot.title = element_text(size = 38)) +  
+    theme(axis.text.x = element_text(size = 30)) +
+    theme(axis.text.y = element_text(size = 30)) +
+    geom_jitter(alpha = .3) +
+    scale_x_discrete(labels = l) +
+    labs(title = paste('F/B Ratio at Year',a-1),
+         x = paste('Weight Class at Year',a-1, '(Unweighted Appraoch)'), y = "F/B Ratio",
+         color = "Weight Class")
+    
+
+})
+
+bcslabs_0 <- paste(levels(sub.weight.0$BCS.0),"\n(N=",table(sub.weight.0$BCS.0),")",sep="")
+
+ggplot(sub.weight.0 ,aes(x = BCS.0, y = bf_ratio)) +
+  geom_boxplot() +
+  scale_x_continuous(breaks=seq(1,9,by=1)) +
+  theme(axis.title = element_text(size = 35)) +   
+  theme(plot.title = element_text(size = 38)) +  
+  theme(axis.text.x = element_text(size = 30)) +
+  theme(axis.text.y = element_text(size = 30)) +
+  aes(group=BCS.0) +
+  geom_jitter(alpha = .3) +
+  #scale_x_discrete(labels = bcslabs_0) +
+  labs(title = paste('F/B Ratio at Year 0'),
+       x = paste('Weight Class at Year 0', '(Unweighted Appraoch)'), y = "F/B Ratio",
+       color = "Weight Class")
+
+
+graph_data_long_0 <- melt(graph_data_0, id = "weight.class.0")
+graph_data_long_1 <- melt(graph_data_1, id = "weight.class.1")
+graph_data_long_2 <- melt(graph_data_2, id = "weight.class.2")
+graph_data_long_3 <- melt(graph_data_3, id = "weight.class.3")
+graph_data_long_4 <- melt(graph_data_4, id = "weight.class.4")
+graph_data_long_5 <- melt(graph_data_5, id = "weight.class.5")
+
+
+graph_data_long_subset_0 <- subset(graph_data_long_0, variable %in% c('RA__d__Bacteria.p__Actinobacteriota', 
+                                                                  'RA__d__Bacteria.p__Bacteroidota', 
+                                                                  'RA__d__Bacteria.p__Campilobacterota', 
+                                                                  'RA__d__Bacteria.p__Firmicutes', 
+                                                                  'RA__d__Bacteria.p__Fusobacteriota', 
+                                                                  'RA__d__Bacteria.p__Proteobacteria'))
+
+graph_data_long_subset_1 <- subset(graph_data_long_1, variable %in% c('RA__d__Bacteria.p__Actinobacteriota', 
+                                                                      'RA__d__Bacteria.p__Bacteroidota', 
+                                                                      'RA__d__Bacteria.p__Campilobacterota', 
+                                                                      'RA__d__Bacteria.p__Firmicutes', 
+                                                                      'RA__d__Bacteria.p__Fusobacteriota', 
+                                                                      'RA__d__Bacteria.p__Proteobacteria'))
+
+graph_data_long_subset_2 <- subset(graph_data_long_2, variable %in% c('RA__d__Bacteria.p__Actinobacteriota', 
+                                                                  'RA__d__Bacteria.p__Bacteroidota', 
+                                                                  'RA__d__Bacteria.p__Campilobacterota', 
+                                                                  'RA__d__Bacteria.p__Firmicutes', 
+                                                                  'RA__d__Bacteria.p__Fusobacteriota', 
+                                                                  'RA__d__Bacteria.p__Proteobacteria'))
+
+graph_data_long_subset_3 <- subset(graph_data_long_3, variable %in% c('RA__d__Bacteria.p__Actinobacteriota', 
+                                                                      'RA__d__Bacteria.p__Bacteroidota', 
+                                                                      'RA__d__Bacteria.p__Campilobacterota', 
+                                                                      'RA__d__Bacteria.p__Firmicutes', 
+                                                                      'RA__d__Bacteria.p__Fusobacteriota', 
+                                                                      'RA__d__Bacteria.p__Proteobacteria'))
+
+graph_data_long_subset_4 <- subset(graph_data_long_4, variable %in% c('RA__d__Bacteria.p__Actinobacteriota', 
+                                                                  'RA__d__Bacteria.p__Bacteroidota', 
+                                                                  'RA__d__Bacteria.p__Campilobacterota', 
+                                                                  'RA__d__Bacteria.p__Firmicutes', 
+                                                                  'RA__d__Bacteria.p__Fusobacteriota', 
+                                                                  'RA__d__Bacteria.p__Proteobacteria'))
+
+graph_data_long_subset_5 <- subset(graph_data_long_5, variable %in% c('RA__d__Bacteria.p__Actinobacteriota', 
+                                                                      'RA__d__Bacteria.p__Bacteroidota', 
+                                                                      'RA__d__Bacteria.p__Campilobacterota', 
+                                                                      'RA__d__Bacteria.p__Firmicutes', 
+                                                                      'RA__d__Bacteria.p__Fusobacteriota', 
+                                                                      'RA__d__Bacteria.p__Proteobacteria'))
+
+long_graphs <- list(graph_data_long_subset_0,
+                    graph_data_long_subset_1,
+                    graph_data_long_subset_2,
+                    graph_data_long_subset_3,
+                    graph_data_long_subset_4,
+                    graph_data_long_subset_5
+                    )
+long_weight <- list(graph_data_long_subset_0$weight.class.0,
+                    graph_data_long_subset_0$weight.class.1,
+                    graph_data_long_subset_2$weight.class.2,
+                    graph_data_long_subset_0$weight.class.3,
+                    graph_data_long_subset_4$weight.class.4,
+                    graph_data_long_subset_0$weight.class.5)
+
+long.list <- c(1,3,5)
+lapply(long.list, function(a){
+  df <- long_graphs[[a]]
+  x <- long_weight[[a]]
+  #pdf('bacteria_distribution at Year %02d.pdf', height = 10, width = 16)
+  ggplot(df, aes(x = variable, y = value, color = x)) +
+    geom_boxplot() +
+    theme(axis.title = element_text(size = 35)) +   
+    theme(plot.title = element_text(size = 38)) +  
+    theme(axis.text.y = element_text(size = 30)) +
+    theme(legend.text = element_text(size = 35)) +
+    theme(axis.text.x = element_text(angle = 90)) +
+    #scale_x_discrete(limits=c("Group 1","Group 2","Group 3","Group 4"))
+    #geom_jitter(alpha = .3) +
+    labs(title = paste('Relative Bacterial Abundance at Year',a-1),
+         x = paste('Weight Class at Year',a-1, '(Unweighted Approach)'), 
+         y = "Relative Abundance",
+         #subtitle = "Using Weighted Unifrac Retained Samples",
+         #caption = "Data source: Weighted Unifrac Retained Samples"
+         color = "Weight Class")
+#dev.off()
+})
+
+#####
+#modeling
+#####
+#taxa$BCS.0 <- as.factor(taxa$BCS.0)
+
+df2<-taxa[!(taxa$BCS.0=="3" | taxa$BCS.0=="8" | is.na(taxa$BCS.0)),]
+
+df2$BCS.0 <- as.factor(df2$BCS.0)
+df2$BCS.0
+
+unweighted.stats <- polr(BCS.0 ~ bf_ratio + RA__d__Bacteria.p__Firmicutes + 
+            RA__d__Bacteria.p__Bacteroidota + RA__d__Bacteria.p__Actinobacteriota +
+            RA__d__Bacteria.p__Campilobacterota + RA__d__Bacteria.p__Fusobacteriota +
+            RA__d__Bacteria.p__Proteobacteria, data = df2, Hess=TRUE)
+summary(unweighted.stats)
+
+
+
+weighted.stats <- polr(BCS.0 ~ bf_ratio + RA__d__Bacteria.p__Firmicutes + 
+                           RA__d__Bacteria.p__Bacteroidota + RA__d__Bacteria.p__Actinobacteriota +
+                           RA__d__Bacteria.p__Campilobacterota + RA__d__Bacteria.p__Fusobacteriota +
+                           RA__d__Bacteria.p__Proteobacteria, data = df2, Hess=TRUE)
+summary(weighted.stats)
+
+#weighted taxa plots
+#####
+#Run together as chunk to avoid overwriting errors
+######
+weighted.taxa  <-  read.csv("../../Generated Metadata/FinalDocs/unique_weighted_level_2_taxa.csv")
+
+unweighted.taxa <-  read.csv("../../Generated Metadata/FinalDocs/unique_unweighted_level_2_taxa.csv")
+
+#Select taxa for analysis and hash out unwanted
+#taxa <- weighted.taxa
+taxa <- weighted.taxa 
+
+relative.abundance <- taxa[,c("index", "Unassigned.__", colnames(taxa[,grep('d__', names(taxa))]))]
+
+#relative.abundance$bacteria_sum = rowSums(relative.abundance[,-1]) #by removing this, we don't need to hard code based on the number of taxa present
+
+lapply(2:(ncol(relative.abundance)), function(y){
+  temp <- data.frame( 'temp' = relative.abundance[,y] / rowSums(relative.abundance[,-1]))
+  colnames(temp) <- paste0('RA__',colnames(relative.abundance[y]))
+  taxa <<- cbind(taxa, temp)
+})
+
+taxa$bf_ratio <- taxa$RA__d__Bacteria.p__Firmicutes/taxa$RA__d__Bacteria.p__Bacteroidota
+#####
+#End chunk
+#####
+
+#####
+#Weight at year 0
+#####
+bcs.years <- 0:5
+lapply(bcs.years, function(a){
+  taxa[,paste0('weight.class.',a)] <<- ifelse(taxa[,paste0('BCS.',a)]==1, 'Malnourished', 
+                                              ifelse(taxa[,paste0('BCS.',a)]==2|taxa[,paste0('BCS.',a)]==3, "Underweight", 
+                                                     ifelse(taxa[,paste0('BCS.',a)]==4|taxa[,paste0('BCS.',a)]==5, "Ideal weight",
+                                                            ifelse(taxa[,paste0('BCS.',a)]==6|taxa[,paste0('BCS.',a)]==7, 'Overweight',
+                                                                   ifelse(taxa[,paste0('BCS.',a)]==8|taxa[,paste0('BCS.',a)]==9, "Obese",
+                                                                          ifelse(is.na(taxa[,paste0('BCS.',a)]),NA,"Error in logic"))))))
+})
+write.csv(taxa, "../../Generated Metadata/FinalDocs/weighted_taxa_bcs_identified.csv", row.names = F)
+#####
+#subsetting data frame to ideal and overweight
+#####
+sub.weight.0 <- subset(taxa, weight.class.0 %in% c("Ideal weight","Overweight", "Obese", "Underweight"))
+sub.weight.1 <- subset(taxa, weight.class.1 %in% c("Ideal weight","Overweight", "Obese", "Underweight"))
+sub.weight.2 <- subset(taxa, weight.class.2 %in% c("Ideal weight","Overweight", "Obese", "Underweight"))
+sub.weight.3 <- subset(taxa, weight.class.3 %in% c("Ideal weight","Overweight", "Obese", "Underweight"))
+sub.weight.4 <- subset(taxa, weight.class.4 %in% c("Ideal weight","Overweight", "Obese", "Underweight"))
+sub.weight.5 <- subset(taxa, weight.class.5 %in% c("Ideal weight","Overweight", "Obese", "Underweight"))
+
+sub.weight.0$weight.class.0 <- factor(sub.weight.0$weight.class.0, levels = c("Underweight", "Ideal weight", "Overweight", "Obese"))
+sub.weight.1$weight.class.1 <- factor(sub.weight.1$weight.class.1, levels = c("Underweight", "Ideal weight", "Overweight", "Obese"))
+sub.weight.2$weight.class.2 <- factor(sub.weight.2$weight.class.2, levels = c("Ideal weight", "Overweight", "Obese"))
+sub.weight.3$weight.class.3 <- factor(sub.weight.3$weight.class.3, levels = c("Underweight", "Ideal weight", "Overweight", "Obese"))
+sub.weight.4$weight.class.4 <- factor(sub.weight.4$weight.class.4, levels = c("Underweight", "Ideal weight", "Overweight", "Obese"))
+sub.weight.5$weight.class.5 <- factor(sub.weight.5$weight.class.5, levels = c("Ideal weight", "Overweight", "Obese"))
+
+#####
+#ggplot plotting
+#####
+
+graph_data_0 <- sub.weight.0[c(84:114)]
+graph_data_1 <- sub.weight.1[c(84:113, 115)]
+graph_data_2 <- sub.weight.2[c(84:113, 116)]
+graph_data_3 <- sub.weight.3[c(84:113, 117)]
+graph_data_4 <- sub.weight.4[c(84:113, 118)]
+graph_data_5 <- sub.weight.5[c(84:113, 119)]
+
+
+xlabs_0 <- paste(levels(graph_data_0$weight.class.0),"\n(N=",table(graph_data_0$weight.class.0),")",sep="")
+xlabs_1 <- paste(levels(graph_data_1$weight.class.1),"\n(N=",table(graph_data_1$weight.class.1),")",sep="")
+xlabs_2 <- paste(levels(graph_data_2$weight.class.2),"\n(N=",table(graph_data_2$weight.class.2),")",sep="")
+xlabs_3 <- paste(levels(graph_data_3$weight.class.3),"\n(N=",table(graph_data_3$weight.class.3),")",sep="")
+xlabs_4 <- paste(levels(graph_data_4$weight.class.4),"\n(N=",table(graph_data_4$weight.class.4),")",sep="")
+xlabs_5 <- paste(levels(graph_data_5$weight.class.5),"\n(N=",table(graph_data_5$weight.class.5),")",sep="")
+
+graphs <- list(graph_data_0,  graph_data_1, graph_data_2, graph_data_3, graph_data_4, graph_data_5)
+weight <- list(graph_data_0$weight.class.0, graph_data_1$weight.class.1, graph_data_2$weight.class.2, graph_data_3$weight.class.3, graph_data_4$weight.class.4, graph_data_5$weight.class.5)
+lab <- list(xlabs_0, xlabs_1, xlabs_2, xlabs_3, xlabs_4, xlabs_5)
+bcs.list <- (1:6)
+lapply(bcs.list, function(a){
+  df <- graphs[[a]]
+  x <- weight[[a]]
+  l <- lab[[a]]
+  ggplot(df ,aes(x = x, y = bf_ratio, color = x)) +
+    geom_boxplot() +
+    scale_y_continuous(trans='log10') +
+    theme(axis.title = element_text(size = 35)) +   
+    theme(plot.title = element_text(size = 38)) +  
+    theme(axis.text.x = element_text(size = 30)) +
+    theme(axis.text.y = element_text(size = 30)) +
+    geom_jitter(alpha = .3) +
+    scale_x_discrete(labels = l) +
+    labs(title = paste('F/B Ratio at Year',a-1),
+         x = paste('Weight Class at Year',a-1, '(Weighted Appraoch)'), y = "F/B Ratio",
+         color = "Weight Class")
+  
+  
+})
+
+graph_data_long_0 <- melt(graph_data_0, id = "weight.class.0")
+graph_data_long_1 <- melt(graph_data_1, id = "weight.class.1")
+graph_data_long_2 <- melt(graph_data_2, id = "weight.class.2")
+graph_data_long_3 <- melt(graph_data_3, id = "weight.class.3")
+graph_data_long_4 <- melt(graph_data_4, id = "weight.class.4")
+graph_data_long_5 <- melt(graph_data_5, id = "weight.class.5")
+
+
+graph_data_long_subset_0 <- subset(graph_data_long_0, variable %in% c('RA__d__Bacteria.p__Actinobacteriota', 
+                                                                      'RA__d__Bacteria.p__Bacteroidota', 
+                                                                      'RA__d__Bacteria.p__Campilobacterota', 
+                                                                      'RA__d__Bacteria.p__Firmicutes', 
+                                                                      'RA__d__Bacteria.p__Fusobacteriota', 
+                                                                      'RA__d__Bacteria.p__Proteobacteria'))
+
+graph_data_long_subset_1 <- subset(graph_data_long_1, variable %in% c('RA__d__Bacteria.p__Actinobacteriota', 
+                                                                      'RA__d__Bacteria.p__Bacteroidota', 
+                                                                      'RA__d__Bacteria.p__Campilobacterota', 
+                                                                      'RA__d__Bacteria.p__Firmicutes', 
+                                                                      'RA__d__Bacteria.p__Fusobacteriota', 
+                                                                      'RA__d__Bacteria.p__Proteobacteria'))
+
+graph_data_long_subset_2 <- subset(graph_data_long_2, variable %in% c('RA__d__Bacteria.p__Actinobacteriota', 
+                                                                      'RA__d__Bacteria.p__Bacteroidota', 
+                                                                      'RA__d__Bacteria.p__Campilobacterota', 
+                                                                      'RA__d__Bacteria.p__Firmicutes', 
+                                                                      'RA__d__Bacteria.p__Fusobacteriota', 
+                                                                      'RA__d__Bacteria.p__Proteobacteria'))
+
+graph_data_long_subset_3 <- subset(graph_data_long_3, variable %in% c('RA__d__Bacteria.p__Actinobacteriota', 
+                                                                      'RA__d__Bacteria.p__Bacteroidota', 
+                                                                      'RA__d__Bacteria.p__Campilobacterota', 
+                                                                      'RA__d__Bacteria.p__Firmicutes', 
+                                                                      'RA__d__Bacteria.p__Fusobacteriota', 
+                                                                      'RA__d__Bacteria.p__Proteobacteria'))
+
+graph_data_long_subset_4 <- subset(graph_data_long_4, variable %in% c('RA__d__Bacteria.p__Actinobacteriota', 
+                                                                      'RA__d__Bacteria.p__Bacteroidota', 
+                                                                      'RA__d__Bacteria.p__Campilobacterota', 
+                                                                      'RA__d__Bacteria.p__Firmicutes', 
+                                                                      'RA__d__Bacteria.p__Fusobacteriota', 
+                                                                      'RA__d__Bacteria.p__Proteobacteria'))
+
+graph_data_long_subset_5 <- subset(graph_data_long_5, variable %in% c('RA__d__Bacteria.p__Actinobacteriota', 
+                                                                      'RA__d__Bacteria.p__Bacteroidota', 
+                                                                      'RA__d__Bacteria.p__Campilobacterota', 
+                                                                      'RA__d__Bacteria.p__Firmicutes', 
+                                                                      'RA__d__Bacteria.p__Fusobacteriota', 
+                                                                      'RA__d__Bacteria.p__Proteobacteria'))
+
+long_graphs <- list(graph_data_long_subset_0,
+                    graph_data_long_subset_1,
+                    graph_data_long_subset_2,
+                    graph_data_long_subset_3,
+                    graph_data_long_subset_4,
+                    graph_data_long_subset_5
+)
+long_weight <- list(graph_data_long_subset_0$weight.class.0,
+                    graph_data_long_subset_0$weight.class.1,
+                    graph_data_long_subset_2$weight.class.2,
+                    graph_data_long_subset_0$weight.class.3,
+                    graph_data_long_subset_4$weight.class.4,
+                    graph_data_long_subset_0$weight.class.5)
+
+long.list <- c(1,3,5)
+lapply(long.list, function(a){
+  df <- long_graphs[[a]]
+  x <- long_weight[[a]]
+  #pdf('bacteria_distribution at Year %02d.pdf', height = 10, width = 16)
+  ggplot(df, aes(x = variable, y = value, color = x)) +
+    geom_boxplot() +
+    theme(axis.title = element_text(size = 35)) +   
+    theme(plot.title = element_text(size = 38)) +  
+    theme(axis.text.y = element_text(size = 30)) +
+    theme(legend.text = element_text(size = 35)) +
+    theme(axis.text.x = element_text(angle = 90)) +
+    #scale_x_discrete(limits=c("Group 1","Group 2","Group 3","Group 4"))
+    #geom_jitter(alpha = .3) +
+    labs(title = paste('Relative Bacterial Abundance at Year',a-1),
+         x = paste('Weight Class at Year',a-1, '(Weighted Approach)'), 
+         y = "Relative Abundance",
+         #subtitle = "Using Weighted Unifrac Retained Samples",
+         #caption = "Data source: Weighted Unifrac Retained Samples"
+         color = "Weight Class")
+  #dev.off()
+})
+
+
+#####
+#base r plotting
+#####
+RA.list <- colnames(taxa[,grep('RA__', names(taxa))])
+
+yr.0.plot <- function(taxa.name=c('Bacteroidota', 'Firmicutes'), taxa.num=c(6,8,10,12,13,16,17,25)){
+  par(mfrow=c(length(taxa.name)+1,1))
+  yr.0.wt <- table(ideal_over$weight.class)
+  barplot(yr.0.wt)
+  
+  taxa.plot <-function(taxa.name='Firmicutes', taxa.num=16){
+    boxplot(ideal_over[,RA.list[taxa.num]]~ideal_over$weight.class, ylab = paste('Relative abundance of', taxa.name), xlab = 'Weight Class')  
+  }
+  lapply(1:length(taxa.name), function(t){
+    taxa.plot(taxa.name = taxa.name[t], taxa.num = taxa.num[t])
+  })
+}
+
+pdf('bacteria_distribution.pdf', height = 15, width = 5)
+yr.0.plot(taxa.name=c('Actinobacteriota', 'Bacteroidota', 'Campilobacterota', 'Firmicutes', 'Fusobacteriota', 'Proteobacteria'), taxa.num=c(6,8,10,16,17,25))
+dev.off()
+
