@@ -1,0 +1,63 @@
+#####
+#Readme
+#####
+#To use this scrip you need to have access to the following OneDrive folder
+#"Data analyais" folder within Alex Romero's UCDenver OneDrive (c. 2020)
+#for access contact email alex.romero@cuanshutz.edu
+
+#####
+#Load Libraries
+#####
+library(readxl)
+
+getwd() #this should be the directory that holds the GRLS github project
+#####
+#Load metadata
+#####
+#../../ goes back two folders into the OneDrive "Data Analysis" directory to find file
+sfh1920 <- read.csv("../../Generated Metadata/SFH19_20_DataClean.csv") #dog characteristics
+diet_data <- read.csv("../../Generated Metadata/Cleaned_diet_metadata.csv") #diet metadata
+dog.character <- read.csv("../../Raw Metadata/miller table 1.csv") #fecal sample details
+dog.miller <- read.csv("../../Raw Metadata/millerpicklist.csv") #specific microbiome analysis dogs
+dog.full_details <- read.csv("../../Raw Metadata/full_data_set.csv") #full info from data commons
+dog.id <- read.csv("../../Raw Metadata/GRLS_dogid_mapping.csv") #dog id key
+
+#####
+#Trim metadata
+#####
+trimmed.character <- dog.character[which(dog.character$SEQUENCE==0),] 
+trimmed.miller <- dog.miller[c("DOGID", "Barcode", "Rack_Shelf", "Box_Row", "Box_Column")]
+trimmed.full_details <- dog.full_details[c("ID","SexStatus","DOB",
+                                           "GRLSEnrollDate", 
+                                           "RFEMA__spayed_on_date__00", 
+                                           "RFEMA__spayed_reason__00", 
+                                           "RMALE__neutered_on_date__00", 
+                                           "RMALE__neutered_reason__00")]
+trimmed.diet <- diet_data[which(diet_data$SEQUENCE==0),]
+
+#####
+#Merge data
+#####
+diet <- merge(dog.id, trimmed.diet, by.x= "grls_id", by.y = "DOGID")
+grls <- merge(trimmed.full_details, diet, by.x="ID", by.y = "public_id")
+miller <- merge(trimmed.character, trimmed.miller, by.x = "DOGID", by.y = "DOGID")
+grls.miller <- merge(grls, miller, by.x="grls_id", by.y="DOGID", all.y = T)
+sfh1920_metadata <- merge(sfh1920, grls.miller, by.x = "grls_id", by.y = "grls_id", all.x=T)
+
+#colnames(sfh1920_metadata)
+
+ordered_metadata <- sfh1920_metadata[, c("X.SampleID", "grls_id","public_id", "Semester", "Section", 
+                                         "pooled","gDNA_gel","PCR_gel","SexStatus","DOB", "GRLSEnrollDate",
+                                         "RFEMA__spayed_on_date__00", "RFEMA__spayed_reason__00","RMALE__neutered_on_date__00",
+                                         "RMALE__neutered_reason__00","PCT.Canned_food","PCT.Data_unreliable",
+                                         "PCT.Dry_food","PCT.Freeze_dry_food", "PCT.Refrigerated.Frozen_raw_food",
+                                         "PCT.Semi.dry.Semimoist_food","Temp.category.sub.total","WATERSRC","SUPPMNT8",
+                                         "YRDTREAT","HOUSETRT","EATGRASS", "CONSUMEF","TYPEAREA","ACTLEVEL",
+                                         "OZIP","MEDNAME","GENDER","ever_hwt","allyr_hwt","ever_flea","allyr_flea","abx",
+                                         "antipoo","swim","p_bowls","bodyfat","twocat","threecat", "bcs","Barcode",
+                                         "Rack_Shelf","Box_Row", "Box_Column", "SEQUENCE.y" )]                                                                          
+
+#####
+#Create metadata csv file
+#####
+write.csv(ordered_metadata, "../../Generated Metadata/sfh1920_metadata.csv", row.names = F)
