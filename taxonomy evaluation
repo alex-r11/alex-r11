@@ -1,0 +1,52 @@
+####
+#Load Libraries
+#####
+library(readxl)
+
+
+#####
+#Load metadata
+#####
+getwd() #this should be the directory that holds the GRLS github project
+
+#../../ goes back two folders into the OneDrive "Data Analysis" directory to find file
+taxonomy <- read.csv("../../Final Analysis Files/Taxonomy/taxonomy.csv")
+prefilter <- read.csv("../../Final Analysis Files/Taxonomy/pre-filtering ASVs.csv") 
+unweighted.filtered <- read.csv("../../Final Analysis Files/Taxonomy/unweighted-filtered ASVs.csv") 
+weighted.filtered <- read.csv("../../Final Analysis Files/Taxonomy/weighted-filtered ASVs.csv") 
+
+prefilter.unique <- read.csv("../../Final Analysis Files/Taxonomy/pre-unique-filtering ASVs.csv") 
+unweighted.filtered.unique <- read.csv("../../Final Analysis Files/Taxonomy/unweighted-unique-filtered ASVs.csv") 
+weighted.filtered.unique <- read.csv("../../Final Analysis Files/Taxonomy/weighted-unique-filtered ASVs.csv") 
+
+#####
+#Merge data
+#####
+#total number of samples found on feature table summary in v03_table
+#968 total samples
+prefilter.taxonomy <- merge(prefilter, taxonomy, by.x= "Feature.ID", by.y = "Feature.ID")
+#394 total dogs
+prefilter.unique.taxonomy <- merge(prefilter.unique, taxonomy, by.x= "Feature.ID", by.y = "Feature.ID")
+
+#549 total samples
+unweighted.filtered.taxonomy <- merge(unweighted.filtered, taxonomy, by.x="Feature.ID", by.y = "Feature.ID")
+#224 total dogs
+unweighted.filtered.unique.taxonomy <- merge(unweighted.filtered.unique, taxonomy, by.x="Feature.ID", by.y = "Feature.ID")
+
+#514 total samples
+weighted.filtered.taxonomy <- merge(weighted.filtered, taxonomy, by.x = "Feature.ID", by.y = "Feature.ID")
+#211 total samples
+weighted.filtered.unique.taxonomy <- merge(weighted.filtered.unique, taxonomy, by.x = "Feature.ID", by.y = "Feature.ID")
+
+#####
+#Data analysis
+#####
+#Sample level
+prefilter.taxonomy$percent <- prefilter.taxonomy$X..of.Samples.Observed.In/968*100
+unweighted.filtered.taxonomy$percent <- unweighted.filtered.taxonomy$X..of.Samples.Observed.In/549*100
+weighted.filtered.taxonomy$percent <- weighted.filtered.taxonomy$X..of.Samples.Observed.In/514*100
+
+#Dog level
+prefilter.unique.taxonomy$percent <- prefilter.unique.taxonomy$X..of.Samples.Observed.In/394*100
+unweighted.filtered.unique.taxonomy$percent <- unweighted.filtered.unique.taxonomy$X..of.Samples.Observed.In/224*100
+weighted.filtered.unique.taxonomy$percent <- weighted.filtered.unique.taxonomy$X..of.Samples.Observed.In/211*100
