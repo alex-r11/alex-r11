@@ -1,7 +1,5 @@
 - 👋 Hi, I’m @alex-r11
 - 👀 I’m interested in creating reproducible work flows for data analysis.
-- 🌱 I’m currently learning how to condense code by using loops. 
-- 💞️ I’m looking to collaborate on sequencing based data analysis. 
 - 📫 How to reach me: alex.romero@cuanschutz.edu
 
 <!---
